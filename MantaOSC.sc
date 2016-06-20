@@ -1,60 +1,3 @@
-/*(
-OSCdef(\button, {
-    | msg |
-    msg.postln;
-}, '/manta/continuous/button', recvPort: ~defaultRecvPort);
-)*/
-
-MantaPage {
-    var padLeds;
-    var oscSender;
-    var <>padVelocity; // callback for pad velocity (note on/off) events
-    var <>buttonVelocity; // callback for button velocity (note on/off) events
-    var <>padValue; // callback for pad value events
-    var <>sliderValue; // callback for slider value events
-
-    *new {
-        | oscSender |
-        var padLeds = (amber: 0!48, red: 0!48);
-        ^super.newCopyArgs(padLeds, oscSender);
-    }
-
-    setPad {
-        | row, col, color=\amber |
-        var padNum = row * 8 + col;
-        padLeds[color][padNum] = padLeds[color][padNum] + 1;
-    }
-
-    clearPad {
-        | row, col, color=\amber |
-        var padNum = row * 8 + col;
-        if(padLeds[color][padNum] > 0, {
-            padLeds[color][padNum] = padLeds[color][padNum] - 1;
-        }, {
-            "WARNING: % Pad % (row %, column %) cleared too may times\n".postf(color, padNum, padNum.div(8), padNum.mod(8));
-        });
-    }
-
-    draw {
-        // each byte of the mask represents a row of LEDs. First is the 6 rows of amber, then the 6 rows of red
-        var mask = Int8Array[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        [[\amber, 0], [\red, 6]].do {
-            | args |
-            var color = args[0];
-            var maskOffset = args[1];
-            padLeds[color].do {
-                | padcount, idx |
-                if(padcount > 0, {
-                    var row = idx.div(8);
-                    var column = idx.mod(8);
-                    mask[row+maskOffset] = mask[row] | (0x80 >> column);
-                })
-            };
-        };
-        oscSender.sendMsg('/manta/led/pad/frame', "all", mask);
-    }
-}
-
 /*
 MantaOSC
 
@@ -138,5 +81,59 @@ MantaOSC {
         pages = pages.add(page);
         if(activePageIdx.isNil, { activePageIdx = 0 });
         ^page;
+    }
+}
+
+/*
+Often Manta-based apps will want several pages to manipulate different aspects of the app's state. A MantaPage holds all the LED state for that page, as well as allows the user to register callbacks that only apply when that page is active.
+*/
+
+MantaPage {
+    var padLeds;
+    var oscSender;
+    var <>padVelocity; // callback for pad velocity (note on/off) events
+    var <>buttonVelocity; // callback for button velocity (note on/off) events
+    var <>padValue; // callback for pad value events
+    var <>sliderValue; // callback for slider value events
+
+    *new {
+        | oscSender |
+        var padLeds = (amber: 0!48, red: 0!48);
+        ^super.newCopyArgs(padLeds, oscSender);
+    }
+
+    setPad {
+        | row, col, color=\amber |
+        var padNum = row * 8 + col;
+        padLeds[color][padNum] = padLeds[color][padNum] + 1;
+    }
+
+    clearPad {
+        | row, col, color=\amber |
+        var padNum = row * 8 + col;
+        if(padLeds[color][padNum] > 0, {
+            padLeds[color][padNum] = padLeds[color][padNum] - 1;
+        }, {
+            "WARNING: % Pad % (row %, column %) cleared too may times\n".postf(color, padNum, padNum.div(8), padNum.mod(8));
+        });
+    }
+
+    draw {
+        // each byte of the mask represents a row of LEDs. First is the 6 rows of amber, then the 6 rows of red
+        var mask = Int8Array[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        [[\amber, 0], [\red, 6]].do {
+            | args |
+            var color = args[0];
+            var maskOffset = args[1];
+            padLeds[color].do {
+                | padcount, idx |
+                if(padcount > 0, {
+                    var row = idx.div(8);
+                    var column = idx.mod(8);
+                    mask[row+maskOffset] = mask[row] | (0x80 >> column);
+                })
+            };
+        };
+        oscSender.sendMsg('/manta/led/pad/frame', "all", mask);
     }
 }

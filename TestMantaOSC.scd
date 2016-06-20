@@ -1,5 +1,5 @@
 Quarks.install("/Users/srussell/Dropbox/projects/active/MantaOSCQuark")
-Quarks.gui
+
 (
 var manta = MantaOSC.new;
 var pages = [];
