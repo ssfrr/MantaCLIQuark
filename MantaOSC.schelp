@@ -1,0 +1,80 @@
+TITLE:: MantaOSC
+summary:: Interface for the Snyderphonics Manta, using the MantaOSC application that comes with libmanta
+categories:: Controllers
+
+DESCRIPTION::
+
+This class is intended to use with the MantaOSC command-line application that comes as an example with the libmanta library. It allows you to register callbacks for touch events and control the leds.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new MantaOSC Instance. You can optionallly specify the send and receive OSC ports, which will default to the default ports used by the MantaOSC application.
+
+ARGUMENT:: receivePort
+Port to receive the OSC messages on.
+
+ARGUMENT:: sendPort
+Port to send the OSC messages to.
+
+returns:: A new MantaOSC instance.
+
+
+INSTANCEMETHODS::
+
+METHOD:: newPage
+Create a new page.
+
+returns:: The newly-created page.
+
+METHOD:: draw
+This refreshes the LEDs on the Manta to display the current page.
+
+returns:: (describe returnvalue here)
+
+METHOD:: padValue
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+ARGUMENT:: receivePort
+(describe argument here)
+
+ARGUMENT:: sendPort
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: sliderValue
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: padVelocity
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: buttonVelocity
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: enableLedControl
+(describe method here)
+
+ARGUMENT:: enabled
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::

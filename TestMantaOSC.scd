@@ -1,3 +1,5 @@
+Quarks.install("/Users/srussell/Dropbox/projects/active/MantaOSCQuark")
+Quarks.gui
 (
 var manta = MantaOSC.new;
 var pages = [];
@@ -27,3 +29,5 @@ m.enableLedControl
 x.clearPad(3, 2);
 x.setPad(3, 2);
 m.draw
+
+Quarks.folder
