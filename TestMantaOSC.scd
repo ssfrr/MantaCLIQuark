@@ -5,15 +5,19 @@ var manta = MantaOSC.new;
 var pages = [];
 3.do { pages = pages.add(manta.newPage)};
 
-manta.padVelocity = { | pad, vel | "Global - Pad: %, Velocity: %\n".postf(pad, vel)};
-manta.padValue = { | pad, val | "Global - Pad: %, Value: %\n".postf(pad, val)};
-manta.sliderValue = { | slider, val | "Global - Slider: %, Value: %\n".postf(slider, val)};
+manta.onPadVelocity = { | pad, vel | "Global - Pad: %, Velocity: %\n".postf(pad, vel)};
+manta.onPadValue = { | pad, val | "Global - Pad: %, Value: %\n".postf(pad, val)};
+manta.onButtonVelocity = { | btn, vel | "Global - Button: %, Velocity: %\n".postf(btn, vel)};
+manta.onSliderValue = { | slider, val | "Global - Slider: %, Value: %\n".postf(slider, val)};
+manta.onSliderAccum = { | slider, val | "Global - Slider Accum: %, Value: %\n".postf(slider, val)};
 
 pages.do {
     | page, idx |
-    page.padVelocity = { | pad, vel | "Page % - Pad: %, Velocity: %\n".postf(idx, pad, vel)};
-    page.padValue = { | pad, val | "Page % - Pad: %, Value: %\n".postf(idx, pad, val)};
-    page.sliderValue = { | slider, val | "Page % - Slider: %, Value: %\n".postf(idx, slider, val)};
+    page.onPadVelocity = { | pad, vel | "Page % - Pad: %, Velocity: %\n".postf(idx, pad, vel)};
+    page.onPadValue = { | pad, val | "Page % - Pad: %, Value: %\n".postf(idx, pad, val)};
+    page.onButtonVelocity = { | btn, vel | "Page % - Button: %, Velocity: %\n".postf(idx, btn, vel)};
+    page.onSliderValue = { | slider, val | "Page % - Slider: %, Value: %\n".postf(idx, slider, val)};
+    page.onSliderAccum = { | slider, val | "Page % - Slider Accum: %, Value: %\n".postf(idx, slider, val)};
 };
 
 manta.enableLedControl();

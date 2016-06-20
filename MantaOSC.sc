@@ -6,12 +6,18 @@ This class is intended to use with the MantaOSC command-line application that co
 
 MantaOSC {
     var oscSender;
-    var >padVelocity; // callback for pad velocity (note on/off) events (called for all pages)
-    var >buttonVelocity; // callback for button velocity (note on/off) events (called for all pages)
-    var >padValue; // callback for pad value events (called for all pages)
-    var >sliderValue; // callback for slider value events (called for all pages)
+    var >onPadVelocity; // callback for pad velocity (note on/off) events (called for all pages)
+    var >onButtonVelocity; // callback for button velocity (note on/off) events (called for all pages)
+    var >onPadValue; // callback for pad value events (called for all pages)
+    var >onSliderValue; // callback for slider value events (called for all pages)
+    var >onSliderAccum; // callback for accumulated slider value (called for all pages)
     var pages;
     var activePageIdx;
+    var lastSliderValue;
+    var sliderAccum;
+    // the scale is tweaked here to make it easier for a full swipe of the slider
+    // to generate about a 0-1 accumulated value. This is used both within MantaOSC and MantaPage
+    const <sliderScale = 1.17;
 
     *new {
         | receivePort=31416, sendPort=31417 |
@@ -26,22 +32,33 @@ MantaOSC {
 
         oscSender = NetAddr("localhost", sendPort);
         pages = [];
+        lastSliderValue = [nil, nil];
+        sliderAccum = [0, 0];
 
         // we include the receive port in the OSCdef name to make sure that there's only 1 OSCdef per receive port, but we can have multiple mantas on different ports
         OSCdef(("padvalue-" ++ receivePort).asSymbol, {
             | msg |
             var padnum = msg[1];
             var value = msg[2];
-            padValue.value(padnum, value);
-            if(activePageIdx.notNil, { pages[activePageIdx].padValue.value(padnum, value); });
+            onPadValue.value(padnum, value);
+            if(activePageIdx.notNil, { pages[activePageIdx].onPadValue.value(padnum, value); });
         }, '/manta/continuous/pad', recvPort: receivePort);
 
         OSCdef(("slidervalue-" ++ receivePort).asSymbol, {
             | msg |
             var id = msg[1];
             var value = if(msg[2] == 65535, nil, msg[2]);
-            sliderValue.value(id, value);
-            if(activePageIdx.notNil, { pages[activePageIdx].sliderValue.value(id, value); });
+            if(value.notNil && lastSliderValue[id].notNil, {
+                var diff = value - lastSliderValue[id];
+                sliderAccum[id] = sliderAccum[id] + diff.linlin(-4096, 4096, -1*sliderScale, sliderScale);
+                onSliderAccum.value(id, sliderAccum[id]);
+            });
+            onSliderValue.value(id, value);
+            if(activePageIdx.notNil, {
+                pages[activePageIdx].onSliderValue.value(id, value);
+                pages[activePageIdx].updateSlider(id, value);
+            });
+            lastSliderValue[id] = value;
 
         }, '/manta/continuous/slider', recvPort: receivePort);
 
@@ -49,16 +66,16 @@ MantaOSC {
             | msg |
             var padnum = msg[1];
             var value = msg[2];
-            padVelocity.value(padnum, value);
-            if(activePageIdx.notNil, { pages[activePageIdx].padVelocity.value(padnum, value); });
+            onPadVelocity.value(padnum, value);
+            if(activePageIdx.notNil, { pages[activePageIdx].onPadVelocity.value(padnum, value); });
         }, '/manta/velocity/pad', recvPort: receivePort);
 
         OSCdef(("buttonvelocity-" ++ receivePort).asSymbol, {
             | msg |
             var buttonnum = msg[1];
             var velocity = msg[2];
-            buttonVelocity.value(buttonnum, velocity);
-            if(activePageIdx.notNil, { pages[activePageIdx].buttonVelocity.value(buttonnum, velocity); });
+            onButtonVelocity.value(buttonnum, velocity);
+            if(activePageIdx.notNil, { pages[activePageIdx].onButtonVelocity.value(buttonnum, velocity); });
             // button 2 cycles through pages
             if(activePageIdx.notNil && (buttonnum == 0) && (velocity > 0), {
                 activePageIdx = (activePageIdx + 1).mod(pages.size);
@@ -89,17 +106,28 @@ Often Manta-based apps will want several pages to manipulate different aspects o
 */
 
 MantaPage {
-    var padLeds;
     var oscSender;
-    var <>padVelocity; // callback for pad velocity (note on/off) events
-    var <>buttonVelocity; // callback for button velocity (note on/off) events
-    var <>padValue; // callback for pad value events
-    var <>sliderValue; // callback for slider value events
+    var padLeds;
+    var <>onPadVelocity; // callback for pad velocity (note on/off) events
+    var <>onButtonVelocity; // callback for button velocity (note on/off) events
+    var <>onPadValue; // callback for pad value events
+    var <>onSliderValue; // callback for slider value events
+    var <>onSliderAccum; // callback for accumulated slider events
+    var lastSliderValue;
+    var sliderAccum;
+
 
     *new {
         | oscSender |
-        var padLeds = (amber: 0!48, red: 0!48);
-        ^super.newCopyArgs(padLeds, oscSender);
+        var instance = super.newCopyArgs(oscSender);
+        instance.init;
+        ^instance;
+    }
+
+    init {
+        padLeds = (amber: 0!48, red: 0!48);
+        lastSliderValue = [nil, nil];
+        sliderAccum = [0, 0];
     }
 
     setPad {
@@ -135,5 +163,15 @@ MantaPage {
             };
         };
         oscSender.sendMsg('/manta/led/pad/frame', "all", mask);
+    }
+
+    updateSlider {
+        | id, value |
+        if(value.notNil && lastSliderValue[id].notNil, {
+            var diff = value - lastSliderValue[id];
+            sliderAccum[id] = sliderAccum[id] + diff.linlin(-4096, 4096, -1*MantaOSC.sliderScale, MantaOSC.sliderScale);
+            onSliderAccum.value(id, sliderAccum[id]);
+        });
+        lastSliderValue[id] = value;
     }
 }
