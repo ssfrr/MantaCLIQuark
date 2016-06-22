@@ -39,9 +39,11 @@ MantaOSC {
         OSCdef(("padvalue-" ++ receivePort).asSymbol, {
             | msg |
             var padnum = msg[1];
+            var row = padnum.div(8);
+            var column = padnum.mod(8);
             var value = msg[2];
-            onPadValue.value(padnum, value);
-            if(activePageIdx.notNil, { pages[activePageIdx].onPadValue.value(padnum, value); });
+            onPadValue.value(row, column, value);
+            if(activePageIdx.notNil, { pages[activePageIdx].onPadValue.value(row, column, value); });
         }, '/manta/continuous/pad', recvPort: receivePort);
 
         OSCdef(("slidervalue-" ++ receivePort).asSymbol, {
@@ -65,9 +67,11 @@ MantaOSC {
         OSCdef(("padvelocity-" ++ receivePort).asSymbol, {
             | msg |
             var padnum = msg[1];
+            var row = padnum.div(8);
+            var column = padnum.mod(8);
             var value = msg[2];
-            onPadVelocity.value(padnum, value);
-            if(activePageIdx.notNil, { pages[activePageIdx].onPadVelocity.value(padnum, value); });
+            onPadVelocity.value(row, column, value);
+            if(activePageIdx.notNil, { pages[activePageIdx].onPadVelocity.value(row, column, value); });
         }, '/manta/velocity/pad', recvPort: receivePort);
 
         OSCdef(("buttonvelocity-" ++ receivePort).asSymbol, {
