@@ -162,7 +162,7 @@ MantaPage {
                 if(padcount > 0, {
                     var row = idx.div(8);
                     var column = idx.mod(8);
-                    mask[row+maskOffset] = mask[row] | (0x80 >> column);
+                    mask[row+maskOffset] = mask[row+maskOffset] | (0x80 >> column);
                 })
             };
         };
