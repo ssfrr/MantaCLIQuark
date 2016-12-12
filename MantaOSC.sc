@@ -15,9 +15,14 @@ MantaOSC {
     var activePageIdx;
     var lastSliderValue;
     var sliderAccum;
+    var >debug = false;
     // the scale is tweaked here to make it easier for a full swipe of the slider
     // to generate about a 0-1 accumulated value. This is used both within MantaOSC and MantaPage
     const <sliderScale = 1.17;
+    // maximum value reported for a Pad Value/Velocity. We use these to scale the values to 0-1
+    // in the callbacks
+    const maxPadValue = 208;
+    const maxPadVelocity = 105;
 
     *new {
         | receivePort=31416, sendPort=31417 |
@@ -41,19 +46,21 @@ MantaOSC {
             var padnum = msg[1];
             var row = padnum.div(8);
             var column = padnum.mod(8);
-            var value = msg[2];
+            var value = min(1.0, msg[2] / maxPadValue);
             onPadValue.value(row, column, value);
             if(activePageIdx.notNil, { pages[activePageIdx].onPadValue.value(row, column, value); });
+            if(debug, {"MantaOSC: Row %, Column %, Value %\n".postf(row, column, value)});
         }, '/manta/continuous/pad', recvPort: receivePort);
 
         OSCdef(("slidervalue-" ++ receivePort).asSymbol, {
             | msg |
             var id = msg[1];
-            var value = if(msg[2] == 65535, nil, msg[2]);
+            var value = if(msg[2] == 65535, nil, msg[2]/4096);
             if(value.notNil && lastSliderValue[id].notNil, {
                 var diff = value - lastSliderValue[id];
-                sliderAccum[id] = sliderAccum[id] + diff.linlin(-4096, 4096, -1*sliderScale, sliderScale);
+                sliderAccum[id] = sliderAccum[id] + diff.linlin(-1, 1, -1*sliderScale, sliderScale);
                 onSliderAccum.value(id, sliderAccum[id]);
+                if(debug, {"MantaOSC: Slider %, AccumValue %\n".postf(id, sliderAccum[id])});
             });
             onSliderValue.value(id, value);
             if(activePageIdx.notNil, {
@@ -61,7 +68,7 @@ MantaOSC {
                 pages[activePageIdx].updateSlider(id, value);
             });
             lastSliderValue[id] = value;
-
+            if(debug, {"MantaOSC: Slider %, Value %\n".postf(id, value)});
         }, '/manta/continuous/slider', recvPort: receivePort);
 
         OSCdef(("padvelocity-" ++ receivePort).asSymbol, {
@@ -69,15 +76,16 @@ MantaOSC {
             var padnum = msg[1];
             var row = padnum.div(8);
             var column = padnum.mod(8);
-            var value = msg[2];
+            var value = min(1.0, msg[2] / maxPadVelocity);
             onPadVelocity.value(row, column, value);
             if(activePageIdx.notNil, { pages[activePageIdx].onPadVelocity.value(row, column, value); });
+            if(debug, {"MantaOSC: Row %, Column %, Velocity %\n".postf(row, column, value)});
         }, '/manta/velocity/pad', recvPort: receivePort);
 
         OSCdef(("buttonvelocity-" ++ receivePort).asSymbol, {
             | msg |
             var buttonnum = msg[1];
-            var velocity = msg[2];
+            var velocity = min(1.0, msg[2] / maxPadVelocity);
             onButtonVelocity.value(buttonnum, velocity);
             if(activePageIdx.notNil, { pages[activePageIdx].onButtonVelocity.value(buttonnum, velocity); });
             // button 2 cycles through pages
@@ -85,12 +93,14 @@ MantaOSC {
                 activePageIdx = (activePageIdx + 1).mod(pages.size);
                 this.draw;
             });
+            if(debug, {"MantaOSC: Button %, Velocity %\n".postf(buttonnum, velocity)});
         }, '/manta/velocity/button', recvPort: receivePort);
     }
 
     enableLedControl {
         | enabled=true |
         oscSender.sendMsg('/manta/ledcontrol', "padandbutton", if(enabled, 1, 0));
+        if(debug, {"MantaOSC: LED Control %\n".postf(enabled)});
     }
 
     draw {
