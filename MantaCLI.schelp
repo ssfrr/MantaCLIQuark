@@ -1,0 +1,115 @@
+TITLE:: MantaCLI
+summary:: Interface for the Snyderphonics Manta, using the MantaOSC and MantaMIDI applications that come with libmanta
+categories:: Controllers
+
+DESCRIPTION::
+
+This class is intended to use with the MantaOSC and MantaMIDI command-line applications that come with the libmanta library. It allows you to register callbacks for touch events and control the leds.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new MantaCLI Instance. You can optionally specify the protocol, send and receive ports, which will default to the default ports used by the MantaOSC and MantaMIDI applications.
+
+ARGUMENT:: protocol
+The protocol (code::\midi:: or code::\osc::) to use to communicate with your Manta. Defaults to code::\midi::.
+
+ARGUMENT:: receivePort
+If the protocol is MIDI, this should be a "DeviceName", "PortName" pair that specifies the MIDI port to receive data from. It defaults to ["Manta Out", "Manta Out"]. If the protocol is OSC this should be a TCP port and defaults to 31416.
+
+ARGUMENT:: sendPort
+If the protocol is MIDI, this should be a "DeviceName", "PortName" pair that specifies the MIDI port to receive data from. It defaults to ["Manta In", "Manta In"]. If the protocol is OSC this should be a TCP port and defaults to 31417.
+
+returns:: A new MantaCLI instance.
+
+INSTANCEMETHODS::
+
+METHOD:: newPage
+Create a new page. Event handler callbacks registered with an individual page will only be called when that page is called, and similarly setting LEDs on a page will only affect that page.
+
+returns:: The newly-created page.
+
+METHOD:: draw
+This refreshes the LEDs on the Manta to display the current page. In general you should not have to call this yourself unless code::autoRefresh:: is set to code::false::.
+
+METHOD:: enableLedControl
+Enable/Disable manual LED control. Note this method has no effect with MantaMIDI, which automatically enables LED control (and disables automatic flash-on-touch behavior) when you send the first LED set message.
+
+ARGUMENT:: enabled
+code::true:: enables LED control, code::false:: disables.
+
+PRIVATE:: init
+
+EXAMPLES::
+
+code::
+
+// connect over OSC (ports can be omitted, these are the defaults)
+~manta = MantaCLI(\osc, 31416, 31417);
+
+MIDIIn.connectAll
+// or connect with MantaMIDI (equivalent to `MantaCLI()`)
+~manta = MantaCLI(\midi, ["Manta Out", "Manta Out"], ["Manta In", "Manta In"]);
+
+// Optionally turn on debug printing
+// ~manta.debug = true;
+
+(
+var pages = List();
+
+// create some pages and register callbacks
+3.do { pages.add(~manta.newPage)};
+
+// register global callbacks
+~manta.onPadVelocity = { | pad, vel | "Global - Pad: %, Velocity: %\n".postf(pad, vel)};
+~manta.onPadValue = { | pad, val | "Global - Pad: %, Value: %\n".postf(pad, val)};
+~manta.onButtonVelocity = { | btn, vel | "Global - Button: %, Velocity: %\n".postf(btn, vel)};
+~manta.onSliderValue = { | slider, val | "Global - Slider: %, Value: %\n".postf(slider, val)};
+~manta.onSliderAccum = { | slider, val | "Global - Slider Accum: %, Value: %\n".postf(slider, val)};
+
+// register page-specific callbacks
+pages.do {
+    | page, idx |
+    page.onPadVelocity = { | pad, vel | "Page % - Pad: %, Velocity: %\n".postf(idx, pad, vel)};
+    page.onPadValue = { | pad, val | "Page % - Pad: %, Value: %\n".postf(idx, pad, val)};
+    page.onButtonVelocity = { | btn, vel | "Page % - Button: %, Velocity: %\n".postf(idx, btn, vel)};
+    page.onSliderValue = { | slider, val | "Page % - Slider: %, Value: %\n".postf(idx, slider, val)};
+    page.onSliderAccum = { | slider, val | "Page % - Slider Accum: %, Value: %\n".postf(idx, slider, val)};
+};
+
+
+// page 2 will light up on touch (note this overwrites the callback set above)
+pages[2].onPadVelocity = { | pad, vel, row, column |
+	case(
+		{vel == 0}, {pages[2].resetPadByIndex(pad)},
+		{vel < 0.5}, {pages[2].setPadByIndex(pad, \amber)},
+		{pages[2].setPadByIndex(pad, \red);}
+	);
+	~manta.draw;
+};
+
+~manta.enableLedControl(true);
+
+{
+    24.do {
+        | idx |
+        pages[0].setPadByIndex(idx*2, \amber);
+		~manta.draw;
+        0.1.wait;
+    };
+
+    // you can also set LEDs by row/column
+    [0, 2, 4].do {
+        | row |
+		pages[1].setPadByRowCol(row, row+1, \red);
+        pages[1].setPadByRowCol(row, row+3, \red);
+		~manta.draw;
+    };
+
+	// now turn a pad off
+	pages[1].clearPadByRowCol(2, 3, \red);
+	~manta.draw;
+
+}.fork;
+)
+::

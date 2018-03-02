@@ -1,7 +1,9 @@
-Quarks.install("/Users/srussell/Dropbox/projects/active/MantaOSCQuark")
+Quarks.install("/Users/srussell/Dropbox/projects/active/MantaCLIQuark")
+Quarks.install("C:\\Users\\sfr\\Dropbox\\projects\\active\\MantaCLIQuark")
+
 
 (
-var manta = MantaOSC.new;
+var manta = MantaCLI();
 var pages = [];
 3.do { pages = pages.add(manta.newPage)};
 
@@ -23,7 +25,7 @@ pages.do {
 manta.enableLedControl();
 )
 
-m = MantaOSC.new
+m = MantaCLI.new
 { {m.draw; (1/30).sleep;}.loop; }.fork
 
 x = m.newPage

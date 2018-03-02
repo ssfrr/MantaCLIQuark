@@ -1,9 +1,0 @@
-(
-  name: "MantaOSC",
-  summary: "Interface for the Snyderphonics Manta, using the MantaOSC application that comes with libmanta.",
-  version: "0.0.0",
-  schelp: "MantaOSC",
-  dependencies: [],
-  license: "MIT",
-  copyright: "Spencer Russell 2016"
-)
