@@ -7,6 +7,7 @@ callbacks for touch events and control the leds.
 */
 
 MantaCLI {
+	classvar <padMaps;
     // global callbacks (called regardless of selected page)
     var >onPadVelocity;
     var >onButtonVelocity;
@@ -15,6 +16,10 @@ MantaCLI {
     var >onSliderAccum;
     var device;
     var pages;
+	// we need to keep track of the touch state so we can freeze things with the pedal
+	var pedalDown = false;
+	var activePads;
+	var sustainedPads;
     var activePageIdx;
     var lastSliderValue;
     var sliderAccum;
@@ -28,6 +33,19 @@ MantaCLI {
     const maxPadValue = 208;
     const maxPadVelocity = 105;
 
+	*initClass {
+		// TODO: make pad mapping more convenient - probably add a `setPadMap` function
+		// that makes it so all indices in the callbacks are mapped
+		padMaps = (
+			\wickihayden: #[
+				0,  2,  4,  6,  8, 10, 12, 14,
+				7,  9, 11, 13, 15, 17, 19, 21,
+				12, 14, 16, 18, 20, 22, 24, 26,
+				19, 21, 23, 25, 27, 29, 31, 33,
+				24, 26, 28, 30, 32, 34, 36, 38,
+				31, 33, 35, 37, 39, 41, 43, 45]);
+	}
+
     *new {| protocol=\midi ...deviceArgs |
         var device;
         switch (protocol,
@@ -37,7 +55,7 @@ MantaCLI {
         if(device.isNil, {
             "Couldn't initialize device".error; ^nil;
             })
-        ^super.new.init(device);
+		^super.new.init(device);
     }
 
     init { | dev |
@@ -45,11 +63,27 @@ MantaCLI {
         pages = [];
         lastSliderValue = [nil, nil];
         sliderAccum = [0, 0];
+		activePads = ();
+		sustainedPads = ();
         device.onPadVelocity = { | idx, rawVelocity |
-            this.triggerPadVelocity(idx, rawVelocity);
+			pedalDown.if {
+				sustainedPads[idx].notNil.if {
+					// this is a sustained pad, so we just update the state
+					sustainedPads[idx] = rawVelocity;
+				} {
+					// pedal is down but this isn't a sustained pad, so it behaves as normal
+					this.triggerPadVelocity(idx, rawVelocity);
+					activePads[idx] = (rawVelocity > 0).if(rawVelocity, nil);
+				}
+			} {
+				this.triggerPadVelocity(idx, rawVelocity);
+				activePads[idx] = (rawVelocity > 0).if(rawVelocity, nil);
+			}
         };
         device.onPadValue = { | idx, rawValue |
-            this.triggerPadValue(idx, rawValue);
+			sustainedPads[idx].isNil.if {
+				this.triggerPadValue(idx, rawValue);
+			}
         };
         device.onButtonVelocity = { | idx, rawVelocity |
             this.triggerButtonVelocity(idx, rawVelocity);
@@ -75,6 +109,27 @@ MantaCLI {
     draw {
         if(activePageIdx.notNil, { pages[activePageIdx].draw; });
     }
+
+	pedal_ {
+		| enabled |
+		pedalDown = enabled;
+
+		enabled.if {
+			sustainedPads = activePads;
+			activePads = ();
+		} {
+			sustainedPads.keys.do {
+				| idx |
+				(sustainedPads[idx] > 0).if {
+					activePads[idx] = sustainedPads[idx];
+				} {
+					// this pad was active when the pedal went down but was inactive when the pedal went up
+					this.triggerPadVelocity(idx, 0);
+				}
+			};
+			sustainedPads = ();
+		}
+	}
 
     triggerPadVelocity {| idx, rawVelocity |
         var row = idx.div(8);
